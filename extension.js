@@ -48,12 +48,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             style_class: 'codex-usage-panel-progress-bar',
             x_align: Clutter.ActorAlign.START,
         });
-        this._panelProgressBar.add_constraint(new Clutter.BindConstraint({
-            source: this._panelProgressBg,
-            coordinate: Clutter.BindCoordinate.WIDTH,
-        }));
-        this._panelProgressBar.set_pivot_point(0, 0.5);
-        this._panelProgressBar.scale_x = 0;
+        this._bindProgressBar(this._panelProgressBg, this._panelProgressBar, 'panel');
         this._panelProgressBg.add_child(this._panelProgressBar);
         this._box.add_child(this._panelProgressBg);
 
@@ -185,12 +180,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             style_class: 'codex-usage-progress-bar usage-low',
             x_align: Clutter.ActorAlign.START,
         });
-        progressBar.add_constraint(new Clutter.BindConstraint({
-            source: progressBg,
-            coordinate: Clutter.BindCoordinate.WIDTH,
-        }));
-        progressBar.set_pivot_point(0, 0.5);
-        progressBar.scale_x = 0;
+        this._bindProgressBar(progressBg, progressBar, 'menu');
         progressBg.add_child(progressBar);
         box.add_child(progressBg);
 
@@ -230,6 +220,14 @@ class CodexUsageIndicator extends PanelMenu.Button {
             this._session.abort();
         }
         this._session = this._createSession();
+    }
+
+    _bindProgressBar(progressBg, progressBar, mode) {
+        progressBar._codexFillMode = mode;
+        progressBar._codexPercent = null;
+        progressBg.connect('notify::width', () => {
+            this._syncProgressBar(progressBg, progressBar);
+        });
     }
 
     _startTimer() {
@@ -558,24 +556,13 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _updatePanelProgressBar(percent) {
-        if (percent === null) {
-            this._panelProgressBar.scale_x = 0;
-            return;
-        }
-        this._panelProgressBar.scale_x = Math.max(0, Math.min(1, percent / 100));
+        this._panelProgressBar._codexPercent = percent;
+        this._syncProgressBar(this._panelProgressBg, this._panelProgressBar);
     }
 
     _updateProgressBar(progressBar, percent) {
-        if (percent === null) {
-            progressBar.scale_x = 0;
-            progressBar.remove_style_class_name('usage-low');
-            progressBar.remove_style_class_name('usage-medium');
-            progressBar.remove_style_class_name('usage-high');
-            progressBar.remove_style_class_name('usage-critical');
-            progressBar.add_style_class_name('usage-low');
-            return;
-        }
-        progressBar.scale_x = Math.max(0, Math.min(1, percent / 100));
+        progressBar._codexPercent = percent;
+        this._syncProgressBar(progressBar.get_parent(), progressBar);
 
         progressBar.remove_style_class_name('usage-low');
         progressBar.remove_style_class_name('usage-medium');
@@ -595,6 +582,28 @@ class CodexUsageIndicator extends PanelMenu.Button {
         } else {
             progressBar.add_style_class_name('usage-low');
         }
+    }
+
+    _syncProgressBar(progressBg, progressBar) {
+        const percent = progressBar._codexPercent;
+        if (percent === null) {
+            progressBar.set_width(0);
+            return;
+        }
+
+        const backgroundWidth = progressBg?.width ?? 0;
+        if (backgroundWidth <= 0) {
+            return;
+        }
+
+        const shouldFillCompletely = progressBar._codexFillMode === 'panel'
+            ? Math.round(percent) >= 100
+            : Number(percent.toFixed(1)) >= 100;
+        const width = shouldFillCompletely
+            ? backgroundWidth + 1
+            : Math.round((percent / 100) * backgroundWidth);
+
+        progressBar.set_width(width);
     }
 
     destroy() {
