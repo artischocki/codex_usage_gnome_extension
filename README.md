@@ -25,11 +25,11 @@ It displays:
 ## Manual install
 
 ```bash
-mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev
-cp extension.js metadata.json openai-blossom-light.svg prefs.js stylesheet.css ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/
-mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas
-cp schemas/org.gnome.shell.extensions.codex-usage.gschema.xml ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas/
-glib-compile-schemas ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas
+mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@dernst.me
+cp extension.js metadata.json openai-blossom-light.svg prefs.js stylesheet.css ~/.local/share/gnome-shell/extensions/codex-usage@dernst.me/
+mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@dernst.me/schemas
+cp schemas/org.gnome.shell.extensions.codex-usage.gschema.xml ~/.local/share/gnome-shell/extensions/codex-usage@dernst.me/schemas/
+glib-compile-schemas ~/.local/share/gnome-shell/extensions/codex-usage@dernst.me/schemas
 ```
 
 Then restart GNOME Shell or log out and back in, and enable the extension.
@@ -44,4 +44,4 @@ gnome-extensions pack . \
   --extra-source=openai-blossom-light.svg
 ```
 
-This creates `dist/codex-usage@artur.dev.shell-extension.zip`.
+This creates `dist/codex-usage@dernst.me.shell-extension.zip`.

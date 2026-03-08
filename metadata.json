@@ -1,7 +1,7 @@
 {
   "name": "Codex Usage",
   "description": "Display Codex usage in the GNOME top panel using the same backend endpoint as Codex.",
-  "uuid": "codex-usage@artur.dev",
+  "uuid": "codex-usage@dernst.me",
   "shell-version": ["46", "47", "48", "49"],
   "settings-schema": "org.gnome.shell.extensions.codex-usage",
   "version": 1
