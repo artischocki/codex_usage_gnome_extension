@@ -658,8 +658,8 @@ export default class CodexUsageExtension extends Extension {
             return;
         }
 
-        this._indicator.get_parent()?.remove_child(this._indicator);
-        delete Main.panel.statusArea[this.uuid];
+        this._indicator.destroy();
+        this._indicator = new CodexUsageIndicator(this, this._settings);
         this._addIndicator();
     }
 }
