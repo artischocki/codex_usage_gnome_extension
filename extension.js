@@ -3,6 +3,7 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
+import Soup from 'gi://Soup';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -11,8 +12,8 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const DEFAULT_AUTH_PATH = GLib.build_filenamev([GLib.get_home_dir(), '.codex', 'auth.json']);
-const FETCH_SCRIPT = 'fetch_codex_status.py';
 const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
+const USAGE_API_URL = 'https://chatgpt.com/backend-api/wham/usage';
 const CACHE_DIR = GLib.build_filenamev([GLib.get_user_state_dir(), 'codex-usage']);
 const CACHE_PATH = GLib.build_filenamev([CACHE_DIR, 'last-usage.json']);
 const MANUAL_REFRESH_COOLDOWN_MS = 5000;
@@ -33,6 +34,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._refreshInFlight = false;
         this._manualRefreshCooldownUntil = 0;
         this._manualRefreshCooldownId = null;
+        this._activeSession = null;
 
         this._box = new St.BoxLayout({
             style_class: 'panel-status-menu-box',
@@ -318,7 +320,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                     return;
                 }
 
-                this._fetchUsage(authPath);
+                this._fetchUsage(tokens.access_token, tokens.account_id);
             } catch (error) {
                 console.error(`Codex Usage: failed to read auth file: ${error.message}`);
                 this._setErrorState(`Could not read ${authPath}`);
@@ -327,45 +329,42 @@ class CodexUsageIndicator extends PanelMenu.Button {
         });
     }
 
-    _fetchUsage(authPath) {
-        const scriptPath = GLib.build_filenamev([this._extension.path, FETCH_SCRIPT]);
-        const argv = [
-            'python3',
-            scriptPath,
-            '--raw',
-            '--auth-file',
-            authPath,
-            '--timeout',
-            '30',
-        ];
+    _fetchUsage(accessToken, accountId) {
+        const session = new Soup.Session();
+        session.timeout = 30;
+        session.idle_timeout = 5;
         const proxyUrl = this._settings.get_string('proxy-url').trim();
         if (proxyUrl !== '') {
-            argv.push('--proxy-url', proxyUrl);
+            session.proxy_resolver = Gio.SimpleProxyResolver.new(proxyUrl, null);
         }
+        this._activeSession = session;
 
-        const subprocess = Gio.Subprocess.new(
-            argv,
-            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
-        );
+        const message = Soup.Message.new('GET', USAGE_API_URL);
+        message.request_headers.append('Authorization', `Bearer ${accessToken}`);
+        message.request_headers.append('ChatGPT-Account-Id', accountId);
+        message.request_headers.append('Accept', 'application/json');
+        message.request_headers.append('User-Agent', 'gnome-shell-codex-usage/1.0');
 
-        subprocess.communicate_utf8_async(null, null, (_proc, result) => {
+        session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null, (_session, result) => {
             try {
-                const [, stdout, stderr] = subprocess.communicate_utf8_finish(result);
-                if (!subprocess.get_successful()) {
-                    const message = stderr?.trim() || 'Usage request failed';
-                    console.error(`Codex Usage: failed to fetch usage: ${message}`);
-                    this._setErrorState(message);
+                const bytes = session.send_and_read_finish(result);
+                if (message.status_code !== 200) {
+                    this._setErrorState(`HTTP ${message.status_code}`);
                     this._finishRefresh();
                     return;
                 }
 
-                const payload = JSON.parse(stdout);
+                const payload = JSON.parse(new TextDecoder().decode(bytes.get_data()));
                 this._updateDisplay(payload);
                 this._storeCachedPayload(payload);
             } catch (error) {
                 console.error(`Codex Usage: failed to fetch usage: ${error.message}`);
                 this._setErrorState('Usage request failed');
             } finally {
+                if (this._activeSession === session) {
+                    this._activeSession = null;
+                }
+                session.abort();
                 this._finishRefresh();
             }
         });
@@ -724,6 +723,8 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     destroy() {
         this._stopTimer();
+        this._activeSession?.abort();
+        this._activeSession = null;
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;

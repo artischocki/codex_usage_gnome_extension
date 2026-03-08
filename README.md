@@ -17,9 +17,9 @@ It displays:
 - optional code-review usage when present
 - plan and credit information
 
-## Local test script
+## Optional local test script
 
-The repository also includes `fetch_codex_status.py`, which makes the same request from the terminal:
+The repository also includes `fetch_codex_status.py` as a terminal-only debugging script. The extension itself does not depend on Python.
 
 ```bash
 ./fetch_codex_status.py
