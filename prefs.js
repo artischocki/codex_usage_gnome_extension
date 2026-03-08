@@ -81,6 +81,20 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         settings.bind('show-icon', showIconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         panelGroup.add(showIconRow);
 
+        const timeFormatRow = new Adw.ComboRow({
+            title: 'Reset time format',
+            subtitle: 'Choose whether reset times use a 24-hour or 12-hour clock.',
+        });
+        const timeFormatModel = new Gtk.StringList();
+        timeFormatModel.append('24-hour');
+        timeFormatModel.append('12-hour');
+        timeFormatRow.set_model(timeFormatModel);
+        timeFormatRow.set_selected(settings.get_string('time-format') === '12h' ? 1 : 0);
+        timeFormatRow.connect('notify::selected', () => {
+            settings.set_string('time-format', timeFormatRow.get_selected() === 1 ? '12h' : '24h');
+        });
+        panelGroup.add(timeFormatRow);
+
         const networkGroup = new Adw.PreferencesGroup({
             title: 'Network',
             description: 'Optional proxy settings for the usage request.',

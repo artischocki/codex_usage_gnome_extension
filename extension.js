@@ -24,6 +24,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._settings = settings;
         this._session = this._createSession();
         this._lastUpdatedAt = null;
+        this._lastPayload = null;
 
         this._box = new St.BoxLayout({
             style_class: 'panel-status-menu-box',
@@ -70,6 +71,8 @@ class CodexUsageIndicator extends PanelMenu.Button {
                 this._updateIconVisibility();
             } else if (key === 'proxy-url') {
                 this._recreateSession();
+            } else if (key === 'time-format' && this._lastPayload) {
+                this._updateDisplay(this._lastPayload);
             }
 
             if (key === 'auth-file' || key === 'proxy-url') {
@@ -330,6 +333,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _updateDisplay(payload) {
+        this._lastPayload = payload;
         const rateLimit = payload.rate_limit ?? {};
         const primary = rateLimit.primary_window ?? null;
         const secondary = rateLimit.secondary_window ?? null;
@@ -404,18 +408,21 @@ class CodexUsageIndicator extends PanelMenu.Button {
         }
 
         const resetAfter = this._formatDuration(window.reset_after_seconds);
-        const resetAt = this._formatTimestamp(window.reset_at);
-        const duration = this._formatDuration(window.limit_window_seconds);
-        return `Resets in ${resetAfter} at ${resetAt} • window ${duration}`;
+        const resetAt = this._formatClockTime(window.reset_at);
+        return `Resets in ${resetAfter} at ${resetAt}`;
     }
 
-    _formatTimestamp(epochSeconds) {
+    _formatClockTime(epochSeconds) {
         if (typeof epochSeconds !== 'number' || !Number.isFinite(epochSeconds)) {
             return 'unknown';
         }
 
         const date = GLib.DateTime.new_from_unix_local(Math.floor(epochSeconds));
-        return date.format('%Y-%m-%d %H:%M');
+        const timeFormat = this._settings.get_string('time-format');
+        if (timeFormat === '12h') {
+            return date.format('%I:%M %p').replace(/^0/, '');
+        }
+        return date.format('%H:%M');
     }
 
     _formatDuration(seconds) {
