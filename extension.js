@@ -343,7 +343,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         const primaryPercent = this._displayPercent(primary);
         const secondaryPercent = this._displayPercent(secondary);
 
-        this._label.set_text(`${Math.round(primaryPercent)}%`);
+        this._label.set_text(this._formatPanelPercent(primaryPercent));
         this._updatePanelProgressBar(primaryPercent);
         this._creditsLabel.set_text(this._formatCredits(credits, rateLimit.allowed === false));
 
@@ -377,13 +377,16 @@ class CodexUsageIndicator extends PanelMenu.Button {
     _windowPercent(window) {
         const value = window?.used_percent;
         if (typeof value !== 'number' || !Number.isFinite(value)) {
-            return 0;
+            return null;
         }
         return Math.max(0, Math.min(100, value));
     }
 
     _displayPercent(window) {
         const usedPercent = this._windowPercent(window);
+        if (usedPercent === null) {
+            return null;
+        }
         if (this._settings.get_string('usage-metric') === 'left') {
             return Math.max(0, Math.min(100, 100 - usedPercent));
         }
@@ -391,7 +394,17 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _formatPercent(value) {
+        if (value === null) {
+            return '—';
+        }
         return `${value.toFixed(1)}%`;
+    }
+
+    _formatPanelPercent(value) {
+        if (value === null) {
+            return '—';
+        }
+        return `${Math.round(value)}%`;
     }
 
     _formatCredits(credits, limitReached) {
@@ -529,12 +542,25 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     _updatePanelProgressBar(percent) {
         const maxWidth = 52;
+        if (percent === null) {
+            this._panelProgressBar.set_width(0);
+            return;
+        }
         const width = Math.round((percent / 100) * maxWidth);
         this._panelProgressBar.set_width(width);
     }
 
     _updateProgressBar(progressBar, percent) {
         const maxWidth = 220;
+        if (percent === null) {
+            progressBar.set_width(0);
+            progressBar.remove_style_class_name('usage-low');
+            progressBar.remove_style_class_name('usage-medium');
+            progressBar.remove_style_class_name('usage-high');
+            progressBar.remove_style_class_name('usage-critical');
+            progressBar.add_style_class_name('usage-low');
+            return;
+        }
         const width = Math.round((percent / 100) * maxWidth);
         progressBar.set_width(width);
 
