@@ -1,6 +1,6 @@
 # Codex Usage GNOME Extension
 
-A GNOME Shell extension that displays Codex usage in the top panel using the same backend endpoint that Codex itself uses.
+A GNOME Shell extension that displays Codex usage in the top panel.
 
 ![Preview](preview.png)
 
@@ -11,28 +11,37 @@ The extension:
 - reads `~/.codex/auth.json` by default
 - uses the access token and account id stored there
 - calls `https://chatgpt.com/backend-api/wham/usage`
+- is implemented entirely in GJS
 
 It displays:
 
 - 5-hour Codex usage
 - 7-day Codex usage
 - optional code-review usage when present
-- plan and credit information
-
-## Optional local test script
-
-The repository also includes `fetch_codex_status.py` as a terminal-only debugging script. The extension itself does not depend on Python.
-
-```bash
-./fetch_codex_status.py
-```
+- credit information
+- manual refresh
+- configurable panel side, time format, and date format
 
 ## Manual install
 
 ```bash
 mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev
-cp -r . ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev
+cp extension.js metadata.json openai-blossom-light.svg prefs.js stylesheet.css ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/
+mkdir -p ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas
+cp schemas/org.gnome.shell.extensions.codex-usage.gschema.xml ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas/
 glib-compile-schemas ~/.local/share/gnome-shell/extensions/codex-usage@artur.dev/schemas
 ```
 
 Then restart GNOME Shell or log out and back in, and enable the extension.
+
+## Build zip
+
+```bash
+mkdir -p dist
+gnome-extensions pack . \
+  --force \
+  --out-dir dist \
+  --extra-source=openai-blossom-light.svg
+```
+
+This creates `dist/codex-usage@artur.dev.shell-extension.zip`.
