@@ -16,6 +16,11 @@
       <summary>Time format</summary>
       <description>Show reset times in 24-hour or 12-hour format.</description>
     </key>
+    <key name="date-format" type="s">
+      <default>'month-day'</default>
+      <summary>Date format</summary>
+      <description>Show the 7-day reset date in a common month/day or day/month format.</description>
+    </key>
     <key name="show-icon" type="b">
       <default>true</default>
       <summary>Show icon</summary>

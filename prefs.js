@@ -95,6 +95,22 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         });
         panelGroup.add(timeFormatRow);
 
+        const dateFormatRow = new Adw.ComboRow({
+            title: '7-day date format',
+            subtitle: 'Choose how the date is shown for the 7-day reset time.',
+        });
+        const dateFormatModel = new Gtk.StringList();
+        dateFormatModel.append('Mar 15');
+        dateFormatModel.append('15 Mar');
+        dateFormatModel.append('03/15');
+        dateFormatModel.append('15/03');
+        dateFormatRow.set_model(dateFormatModel);
+        dateFormatRow.set_selected(this._dateFormatIndex(settings.get_string('date-format')));
+        dateFormatRow.connect('notify::selected', () => {
+            settings.set_string('date-format', ['month-day', 'day-month', 'month/day', 'day/month'][dateFormatRow.get_selected()]);
+        });
+        panelGroup.add(dateFormatRow);
+
         const networkGroup = new Adw.PreferencesGroup({
             title: 'Network',
             description: 'Optional proxy settings for the usage request.',
@@ -127,6 +143,19 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         }
         if (mode === 'both') {
             return 2;
+        }
+        return 0;
+    }
+
+    _dateFormatIndex(format) {
+        if (format === 'day-month') {
+            return 1;
+        }
+        if (format === 'month/day') {
+            return 2;
+        }
+        if (format === 'day/month') {
+            return 3;
         }
         return 0;
     }

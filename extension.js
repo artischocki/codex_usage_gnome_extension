@@ -71,7 +71,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                 this._updateIconVisibility();
             } else if (key === 'proxy-url') {
                 this._recreateSession();
-            } else if (key === 'time-format' && this._lastPayload) {
+            } else if ((key === 'time-format' || key === 'date-format') && this._lastPayload) {
                 this._updateDisplay(this._lastPayload);
             }
 
@@ -441,10 +441,30 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
         const date = GLib.DateTime.new_from_unix_local(Math.floor(epochSeconds));
         const timeFormat = this._settings.get_string('time-format');
-        if (timeFormat === '12h') {
-            return date.format('%Y-%m-%d %I:%M %p').replace(/ 0(\d:\d\d [AP]M)$/, ' $1');
+        const dateFormat = this._settings.get_string('date-format');
+
+        let datePart = '';
+        switch (dateFormat) {
+        case 'day-month':
+            datePart = date.format('%d %b');
+            break;
+        case 'month/day':
+            datePart = date.format('%m/%d');
+            break;
+        case 'day/month':
+            datePart = date.format('%d/%m');
+            break;
+        case 'month-day':
+        default:
+            datePart = date.format('%b %d').replace(/ 0(\d)$/, ' $1');
+            break;
         }
-        return date.format('%Y-%m-%d %H:%M');
+
+        const timePart = timeFormat === '12h'
+            ? date.format('%I:%M %p').replace(/^0/, '')
+            : date.format('%H:%M');
+
+        return `${datePart} ${timePart}`;
     }
 
 
