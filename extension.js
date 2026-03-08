@@ -29,9 +29,12 @@ class CodexUsageIndicator extends PanelMenu.Button {
             style_class: 'panel-status-menu-box',
         });
 
+        const iconPath = GLib.build_filenamev([this._extension.path, 'openai-blossom-light.svg']);
+        const gicon = Gio.icon_new_for_string(iconPath);
         this._icon = new St.Icon({
-            icon_name: 'utilities-terminal-symbolic',
-            style_class: 'system-status-icon codex-usage-icon',
+            gicon,
+            style_class: 'codex-usage-icon',
+            icon_size: 16,
         });
         this._box.add_child(this._icon);
 

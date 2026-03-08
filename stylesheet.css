@@ -1,5 +1,8 @@
 .codex-usage-icon {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
     margin-right: 6px;
+    padding: 2px;
 }
 
 .codex-usage-label {
