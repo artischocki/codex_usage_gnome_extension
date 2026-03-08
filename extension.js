@@ -18,7 +18,7 @@ const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
 const CodexUsageIndicator = GObject.registerClass(
 class CodexUsageIndicator extends PanelMenu.Button {
     _init(extension, settings) {
-        super._init(0.0, 'Codex Usage Indicator');
+        super._init(0.5, 'Codex Usage Indicator');
 
         this._extension = extension;
         this._settings = settings;
