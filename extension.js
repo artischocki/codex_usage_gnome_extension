@@ -53,6 +53,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             coordinate: Clutter.BindCoordinate.WIDTH,
         }));
         this._panelProgressBar.set_pivot_point(0, 0.5);
+        this._panelProgressBar.scale_x = 0;
         this._panelProgressBg.add_child(this._panelProgressBar);
         this._box.add_child(this._panelProgressBg);
 
@@ -189,6 +190,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             coordinate: Clutter.BindCoordinate.WIDTH,
         }));
         progressBar.set_pivot_point(0, 0.5);
+        progressBar.scale_x = 0;
         progressBg.add_child(progressBar);
         box.add_child(progressBg);
 
@@ -557,15 +559,15 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     _updatePanelProgressBar(percent) {
         if (percent === null) {
-            this._panelProgressBar.set_scale_x(0);
+            this._panelProgressBar.scale_x = 0;
             return;
         }
-        this._panelProgressBar.set_scale_x(Math.max(0, Math.min(1, percent / 100)));
+        this._panelProgressBar.scale_x = Math.max(0, Math.min(1, percent / 100));
     }
 
     _updateProgressBar(progressBar, percent) {
         if (percent === null) {
-            progressBar.set_scale_x(0);
+            progressBar.scale_x = 0;
             progressBar.remove_style_class_name('usage-low');
             progressBar.remove_style_class_name('usage-medium');
             progressBar.remove_style_class_name('usage-high');
@@ -573,7 +575,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             progressBar.add_style_class_name('usage-low');
             return;
         }
-        progressBar.set_scale_x(Math.max(0, Math.min(1, percent / 100)));
+        progressBar.scale_x = Math.max(0, Math.min(1, percent / 100));
 
         progressBar.remove_style_class_name('usage-low');
         progressBar.remove_style_class_name('usage-medium');
