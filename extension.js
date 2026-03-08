@@ -13,6 +13,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const DEFAULT_AUTH_PATH = GLib.build_filenamev([GLib.get_home_dir(), '.codex', 'auth.json']);
 const DEFAULT_API_URL = 'https://chatgpt.com/backend-api/wham/usage';
+const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
 
 const CodexUsageIndicator = GObject.registerClass(
 class CodexUsageIndicator extends PanelMenu.Button {
@@ -78,12 +79,6 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _createMenu() {
-        this._statusLabel = this._addInfoSection('Status', 'Loading Codex usage...');
-        this._planLabel = this._addInfoSection('Plan', '...');
-        this._creditsLabel = this._addInfoSection('Credits', '...');
-
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
         const primarySection = this._addUsageSection('5-Hour Usage');
         this._primaryValueLabel = primarySection.valueLabel;
         this._primaryProgressBar = primarySection.progressBar;
@@ -118,6 +113,11 @@ class CodexUsageIndicator extends PanelMenu.Button {
             style_class: 'codex-usage-footer-box',
             vertical: true,
         });
+        this._creditsLabel = new St.Label({
+            text: 'Credits: ...',
+            style_class: 'codex-usage-meta-label',
+        });
+        footerBox.add_child(this._creditsLabel);
         this._updatedLabel = new St.Label({
             text: 'Waiting for first update',
             style_class: 'codex-usage-meta-label',
@@ -126,32 +126,19 @@ class CodexUsageIndicator extends PanelMenu.Button {
         footerItem.add_child(footerBox);
         this.menu.addMenuItem(footerItem);
 
+        const usageItem = new PopupMenu.PopupMenuItem('Open Usage Page');
+        usageItem.connect('activate', () => {
+            try {
+                Gio.app_info_launch_default_for_uri(USAGE_PAGE_URL, null);
+            } catch (error) {
+                console.error(`Codex Usage: failed to open usage page: ${error.message}`);
+            }
+        });
+        this.menu.addMenuItem(usageItem);
+
         const settingsItem = new PopupMenu.PopupMenuItem('Settings');
         settingsItem.connect('activate', () => this._extension.openPreferences());
         this.menu.addMenuItem(settingsItem);
-    }
-
-    _addInfoSection(title, value) {
-        const item = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-        });
-        const box = new St.BoxLayout({
-            style_class: 'codex-usage-section',
-            vertical: true,
-        });
-        box.add_child(new St.Label({
-            text: title,
-            style_class: 'codex-usage-section-title',
-        }));
-        const valueLabel = new St.Label({
-            text: value,
-            style_class: 'codex-usage-meta-label',
-        });
-        box.add_child(valueLabel);
-        item.add_child(box);
-        this.menu.addMenuItem(item);
-        return valueLabel;
     }
 
     _addUsageSection(title) {
@@ -328,9 +315,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
     _setErrorState(message) {
         this._label.set_text('Error');
         this._panelProgressBar.set_width(0);
-        this._statusLabel.set_text(message);
-        this._planLabel.set_text('—');
-        this._creditsLabel.set_text('—');
+        this._creditsLabel.set_text(`Credits: ${message}`);
         this._primaryValueLabel.set_text('—');
         this._primaryResetLabel.set_text('—');
         this._secondaryValueLabel.set_text('—');
@@ -347,17 +332,13 @@ class CodexUsageIndicator extends PanelMenu.Button {
         const secondary = rateLimit.secondary_window ?? null;
         const codeReview = payload.code_review_rate_limit ?? null;
         const credits = payload.credits ?? null;
-        const planType = payload.plan_type ?? 'unknown';
 
         const primaryPercent = this._windowPercent(primary);
         const secondaryPercent = this._windowPercent(secondary);
 
         this._label.set_text(`${Math.round(primaryPercent)}%`);
         this._updatePanelProgressBar(primaryPercent);
-
-        this._statusLabel.set_text(rateLimit.allowed === false ? 'Limit reached' : 'Using live Codex backend usage');
-        this._planLabel.set_text(this._formatPlan(planType));
-        this._creditsLabel.set_text(this._formatCredits(credits));
+        this._creditsLabel.set_text(this._formatCredits(credits, rateLimit.allowed === false));
 
         this._primaryValueLabel.set_text(this._formatPercent(primaryPercent));
         this._primaryResetLabel.set_text(this._formatWindowMeta(primary));
@@ -398,20 +379,20 @@ class CodexUsageIndicator extends PanelMenu.Button {
         return `${value.toFixed(1)}%`;
     }
 
-    _formatPlan(planType) {
-        return planType.charAt(0).toUpperCase() + planType.slice(1);
-    }
+    _formatCredits(credits, limitReached) {
+        if (limitReached) {
+            return 'Credits: limit reached';
+        }
 
-    _formatCredits(credits) {
         if (!credits) {
-            return 'No credit data';
+            return 'Credits: no credit data';
         }
 
         if (credits.unlimited) {
-            return 'Unlimited';
+            return 'Credits: unlimited';
         }
 
-        return `Balance: ${credits.balance ?? '0'}`;
+        return `Credits: balance ${credits.balance ?? '0'}`;
     }
 
     _formatWindowMeta(window) {
