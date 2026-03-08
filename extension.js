@@ -359,7 +359,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         if (reviewWindow) {
             const reviewPercent = this._windowPercent(reviewWindow);
             this._reviewValueLabel.set_text(this._formatPercent(reviewPercent));
-            this._reviewResetLabel.set_text(this._formatShortWindowMeta(reviewWindow));
+            this._reviewResetLabel.set_text(this._formatLongWindowMeta(reviewWindow));
             this._updateProgressBar(this._reviewProgressBar, reviewPercent);
             this._reviewLeadingSeparator.show();
             this._reviewSectionItem.show();
