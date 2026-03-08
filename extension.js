@@ -15,6 +15,7 @@ const FETCH_SCRIPT = 'fetch_codex_status.py';
 const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
 const CACHE_DIR = GLib.build_filenamev([GLib.get_user_state_dir(), 'codex-usage']);
 const CACHE_PATH = GLib.build_filenamev([CACHE_DIR, 'last-usage.json']);
+const MANUAL_REFRESH_COOLDOWN_MS = 5000;
 const PANEL_SIDE_BY_SETTING = {
     left: 'left',
     right: 'right',
@@ -30,6 +31,8 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._lastUpdatedAt = null;
         this._lastPayload = null;
         this._refreshInFlight = false;
+        this._manualRefreshCooldownUntil = 0;
+        this._manualRefreshCooldownId = null;
 
         this._box = new St.BoxLayout({
             style_class: 'panel-status-menu-box',
@@ -272,12 +275,16 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _refreshUsage(manual = false) {
-        if (this._refreshInFlight) {
+        if (this._refreshInFlight || (manual && !this._canRunManualRefresh())) {
             return;
         }
 
+        if (manual) {
+            this._startManualRefreshCooldown();
+        }
+
         this._refreshInFlight = true;
-        this._setRefreshActionState(true, manual);
+        this._setRefreshActionState();
         const authPath = this._resolveAuthPath();
         const file = Gio.File.new_for_path(authPath);
 
@@ -350,18 +357,43 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     _finishRefresh() {
         this._refreshInFlight = false;
-        this._setRefreshActionState(false);
+        this._setRefreshActionState();
     }
 
-    _setRefreshActionState(inFlight) {
+    _canRunManualRefresh() {
+        return Date.now() >= this._manualRefreshCooldownUntil;
+    }
+
+    _startManualRefreshCooldown() {
+        this._manualRefreshCooldownUntil = Date.now() + MANUAL_REFRESH_COOLDOWN_MS;
+
+        if (this._manualRefreshCooldownId) {
+            GLib.source_remove(this._manualRefreshCooldownId);
+        }
+
+        this._manualRefreshCooldownId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            MANUAL_REFRESH_COOLDOWN_MS,
+            () => {
+                this._manualRefreshCooldownId = null;
+                this._setRefreshActionState();
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
+    _setRefreshActionState() {
         if (!this._refreshNowItem) {
             return;
         }
 
-        this._refreshNowItem.label.text = inFlight
+        const inCooldown = !this._canRunManualRefresh();
+        this._refreshNowItem.label.text = this._refreshInFlight
             ? 'Updating...'
-            : 'Update Now';
-        this._refreshNowItem.setSensitive(!inFlight);
+            : inCooldown
+                ? 'Update Now (5s)'
+                : 'Update Now';
+        this._refreshNowItem.setSensitive(!this._refreshInFlight && !inCooldown);
     }
 
     _loadCachedPayload() {
@@ -678,6 +710,10 @@ class CodexUsageIndicator extends PanelMenu.Button {
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
+        }
+        if (this._manualRefreshCooldownId) {
+            GLib.source_remove(this._manualRefreshCooldownId);
+            this._manualRefreshCooldownId = null;
         }
         super.destroy();
     }
