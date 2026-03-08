@@ -148,6 +148,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         });
         this._refreshNowButtonLabel = new St.Label({
             text: 'Update Now',
+            style_class: 'codex-usage-action-label',
             x_expand: true,
             x_align: Clutter.ActorAlign.START,
         });
