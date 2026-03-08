@@ -142,26 +142,17 @@ class CodexUsageIndicator extends PanelMenu.Button {
         footerItem.add_child(footerBox);
         this.menu.addMenuItem(footerItem);
 
-        const refreshNowItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-        });
-        this._refreshNowButtonLabel = new St.Label({
-            text: 'Update Now',
-            x_expand: true,
-            x_align: Clutter.ActorAlign.START,
-        });
-        this._refreshNowButton = new St.Button({
-            child: this._refreshNowButtonLabel,
-            can_focus: true,
-            x_expand: true,
-            style_class: 'popup-menu-item',
-        });
-        this._refreshNowButton.connect('clicked', () => {
+        this._refreshNowItem = new PopupMenu.PopupMenuItem('Update Now');
+        this._refreshNowItem.connect('activate', () => {
             this._refreshUsage(true);
+            GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                if (this.menu) {
+                    this.menu.open();
+                }
+                return GLib.SOURCE_REMOVE;
+            });
         });
-        refreshNowItem.add_child(this._refreshNowButton);
-        this.menu.addMenuItem(refreshNowItem);
+        this.menu.addMenuItem(this._refreshNowItem);
 
         const usageItem = new PopupMenu.PopupMenuItem('Open Usage Page');
         usageItem.connect('activate', () => {
@@ -398,18 +389,17 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _setRefreshActionState() {
-        if (!this._refreshNowButton || !this._refreshNowButtonLabel) {
+        if (!this._refreshNowItem) {
             return;
         }
 
         const inCooldown = !this._canRunManualRefresh();
-        this._refreshNowButtonLabel.text = this._refreshInFlight
+        this._refreshNowItem.label.text = this._refreshInFlight
             ? 'Updating...'
             : inCooldown
                 ? 'Update Now (5s)'
                 : 'Update Now';
-        this._refreshNowButton.set_reactive(!this._refreshInFlight && !inCooldown);
-        this._refreshNowButton.can_focus = !this._refreshInFlight && !inCooldown;
+        this._refreshNowItem.setSensitive(!this._refreshInFlight && !inCooldown);
     }
 
     _loadCachedPayload() {
