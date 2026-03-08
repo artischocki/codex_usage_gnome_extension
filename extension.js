@@ -338,8 +338,13 @@ class CodexUsageIndicator extends PanelMenu.Button {
     }
 
     _setErrorState(message) {
+        if (this._lastPayload) {
+            this._updatedLabel.set_text(`Refresh failed (${message}), showing last result`);
+            return;
+        }
+
         this._label.set_text('Error');
-        this._panelProgressBar.set_width(0);
+        this._updatePanelProgressBar(null);
         this._creditsLabel.set_text(`Credits: ${message}`);
         this._primaryValueLabel.set_text('—');
         this._primaryResetLabel.set_text('—');
