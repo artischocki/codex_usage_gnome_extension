@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.codex-usage" path="/org/gnome/shell/extensions/codex-usage/">
+    <key name="refresh-interval" type="i">
+      <default>60</default>
+      <summary>Refresh interval</summary>
+      <description>How often to refresh Codex usage from the backend, in seconds.</description>
+    </key>
+    <key name="display-mode" type="s">
+      <default>'both'</default>
+      <summary>Display mode</summary>
+      <description>Show usage in the panel as text, a progress bar, or both.</description>
+    </key>
+    <key name="show-icon" type="b">
+      <default>true</default>
+      <summary>Show icon</summary>
+      <description>Whether to show the icon in the top panel.</description>
+    </key>
+    <key name="auth-file" type="s">
+      <default>''</default>
+      <summary>Auth file path</summary>
+      <description>Path to the Codex auth.json file. Empty uses ~/.codex/auth.json.</description>
+    </key>
+    <key name="proxy-url" type="s">
+      <default>''</default>
+      <summary>Proxy URL</summary>
+      <description>Optional HTTP proxy URL used for the usage request.</description>
+    </key>
+  </schema>
+</schemalist>

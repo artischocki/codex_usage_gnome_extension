@@ -1,0 +1,80 @@
+.codex-usage-icon {
+    margin-right: 6px;
+}
+
+.codex-usage-label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.codex-usage-panel-progress-bg {
+    background-color: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    height: 10px;
+    margin-left: 4px;
+    width: 52px;
+}
+
+.codex-usage-panel-progress-bar {
+    background-color: #10b981;
+    border-radius: 999px;
+    height: 10px;
+    transition: width 250ms ease-out;
+}
+
+.codex-usage-section {
+    min-width: 240px;
+    padding: 4px 0;
+    spacing: 6px;
+}
+
+.codex-usage-section-title {
+    color: #f3f4f6;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.codex-usage-value-label {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.codex-usage-progress-bg {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    height: 8px;
+    margin: 4px 0;
+    width: 220px;
+}
+
+.codex-usage-progress-bar {
+    border-radius: 999px;
+    height: 8px;
+    transition: width 250ms ease-out;
+}
+
+.codex-usage-progress-bar.usage-low {
+    background-color: #22c55e;
+}
+
+.codex-usage-progress-bar.usage-medium {
+    background-color: #eab308;
+}
+
+.codex-usage-progress-bar.usage-high {
+    background-color: #f97316;
+}
+
+.codex-usage-progress-bar.usage-critical {
+    background-color: #ef4444;
+}
+
+.codex-usage-meta-label {
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.codex-usage-footer-box {
+    padding: 2px 0 0;
+}
