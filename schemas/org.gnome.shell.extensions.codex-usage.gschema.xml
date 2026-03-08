@@ -26,6 +26,11 @@
       <summary>Date format</summary>
       <description>Show the 7-day reset date in a common month/day or day/month format.</description>
     </key>
+    <key name="show-code-review" type="b">
+      <default>true</default>
+      <summary>Show code review</summary>
+      <description>Whether to show the Code Review usage section in the menu.</description>
+    </key>
     <key name="show-icon" type="b">
       <default>true</default>
       <summary>Show icon</summary>

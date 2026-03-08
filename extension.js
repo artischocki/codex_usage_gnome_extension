@@ -71,7 +71,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                 this._updateIconVisibility();
             } else if (key === 'proxy-url') {
                 this._recreateSession();
-            } else if ((key === 'time-format' || key === 'date-format' || key === 'usage-metric') && this._lastPayload) {
+            } else if ((key === 'time-format' || key === 'date-format' || key === 'usage-metric' || key === 'show-code-review') && this._lastPayload) {
                 this._updateDisplay(this._lastPayload);
             }
 
@@ -356,7 +356,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._updateProgressBar(this._secondaryProgressBar, secondaryPercent);
 
         const reviewWindow = codeReview?.primary_window ?? null;
-        if (reviewWindow) {
+        if (reviewWindow && this._settings.get_boolean('show-code-review')) {
             const reviewPercent = this._displayPercent(reviewWindow);
             this._reviewValueLabel.set_text(this._formatPercent(reviewPercent));
             this._reviewResetLabel.set_text(this._formatLongWindowMeta(reviewWindow));

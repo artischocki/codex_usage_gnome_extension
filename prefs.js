@@ -125,6 +125,13 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         });
         panelGroup.add(dateFormatRow);
 
+        const showCodeReviewRow = new Adw.SwitchRow({
+            title: 'Show code review',
+            subtitle: 'Include the Code Review usage section in the menu.',
+        });
+        settings.bind('show-code-review', showCodeReviewRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        panelGroup.add(showCodeReviewRow);
+
         const networkGroup = new Adw.PreferencesGroup({
             title: 'Network',
             description: 'Optional proxy settings for the usage request.',
