@@ -348,18 +348,18 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._creditsLabel.set_text(this._formatCredits(credits, rateLimit.allowed === false));
 
         this._primaryValueLabel.set_text(this._formatPercent(primaryPercent));
-        this._primaryResetLabel.set_text(this._formatWindowMeta(primary));
+        this._primaryResetLabel.set_text(this._formatShortWindowMeta(primary));
         this._updateProgressBar(this._primaryProgressBar, primaryPercent);
 
         this._secondaryValueLabel.set_text(this._formatPercent(secondaryPercent));
-        this._secondaryResetLabel.set_text(this._formatWindowMeta(secondary));
+        this._secondaryResetLabel.set_text(this._formatLongWindowMeta(secondary));
         this._updateProgressBar(this._secondaryProgressBar, secondaryPercent);
 
         const reviewWindow = codeReview?.primary_window ?? null;
         if (reviewWindow) {
             const reviewPercent = this._windowPercent(reviewWindow);
             this._reviewValueLabel.set_text(this._formatPercent(reviewPercent));
-            this._reviewResetLabel.set_text(this._formatWindowMeta(reviewWindow));
+            this._reviewResetLabel.set_text(this._formatShortWindowMeta(reviewWindow));
             this._updateProgressBar(this._reviewProgressBar, reviewPercent);
             this._reviewLeadingSeparator.show();
             this._reviewSectionItem.show();
@@ -402,7 +402,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         return `Credits: balance ${credits.balance ?? '0'}`;
     }
 
-    _formatWindowMeta(window) {
+    _formatShortWindowMeta(window) {
         if (!window) {
             return 'No data';
         }
@@ -410,6 +410,15 @@ class CodexUsageIndicator extends PanelMenu.Button {
         const resetAfter = this._formatDuration(window.reset_after_seconds);
         const resetAt = this._formatClockTime(window.reset_at);
         return `Resets in ${resetAfter} at ${resetAt}`;
+    }
+
+    _formatLongWindowMeta(window) {
+        if (!window) {
+            return 'No data';
+        }
+
+        const resetAt = this._formatFullDateTime(window.reset_at);
+        return `Resets at ${resetAt}`;
     }
 
     _formatClockTime(epochSeconds) {
@@ -424,6 +433,20 @@ class CodexUsageIndicator extends PanelMenu.Button {
         }
         return date.format('%H:%M');
     }
+
+    _formatFullDateTime(epochSeconds) {
+        if (typeof epochSeconds !== 'number' || !Number.isFinite(epochSeconds)) {
+            return 'unknown';
+        }
+
+        const date = GLib.DateTime.new_from_unix_local(Math.floor(epochSeconds));
+        const timeFormat = this._settings.get_string('time-format');
+        if (timeFormat === '12h') {
+            return date.format('%Y-%m-%d %I:%M %p').replace(/ 0(\d:\d\d [AP]M)$/, ' $1');
+        }
+        return date.format('%Y-%m-%d %H:%M');
+    }
+
 
     _formatDuration(seconds) {
         if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
