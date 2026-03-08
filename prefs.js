@@ -132,6 +132,20 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         settings.bind('show-code-review', showCodeReviewRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         panelGroup.add(showCodeReviewRow);
 
+        const panelSideRow = new Adw.ComboRow({
+            title: 'Panel side',
+            subtitle: 'Place the extension on the left or right side of the top bar.',
+        });
+        const panelSideModel = new Gtk.StringList();
+        panelSideModel.append('Right');
+        panelSideModel.append('Left');
+        panelSideRow.set_model(panelSideModel);
+        panelSideRow.set_selected(settings.get_string('panel-side') === 'left' ? 1 : 0);
+        panelSideRow.connect('notify::selected', () => {
+            settings.set_string('panel-side', panelSideRow.get_selected() === 1 ? 'left' : 'right');
+        });
+        panelGroup.add(panelSideRow);
+
         const networkGroup = new Adw.PreferencesGroup({
             title: 'Network',
             description: 'Optional proxy settings for the usage request.',
