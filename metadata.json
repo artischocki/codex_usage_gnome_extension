@@ -1,8 +1,0 @@
-{
-  "name": "GNOME Usage",
-  "description": "Track local GNOME activity time and show today and 7-day usage in the top panel.",
-  "uuid": "gnome-usage@artur.dev",
-  "shell-version": ["46", "47", "48", "49"],
-  "settings-schema": "org.gnome.shell.extensions.gnome-usage",
-  "version": 1
-}
