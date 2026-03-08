@@ -2,6 +2,8 @@
 
 A GNOME Shell extension that displays Codex usage in the top panel using the same backend endpoint that Codex itself uses.
 
+![Preview](preview.png)
+
 ## Data source
 
 The extension:
