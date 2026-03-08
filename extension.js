@@ -412,7 +412,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         if (value === null) {
             return '—';
         }
-        return `${value.toFixed(1)}%`;
+        return `${Math.round(value)}%`;
     }
 
     _formatPanelPercent(value) {
