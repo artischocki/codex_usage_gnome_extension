@@ -3,7 +3,6 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
-import Soup from 'gi://Soup';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -12,8 +11,10 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const DEFAULT_AUTH_PATH = GLib.build_filenamev([GLib.get_home_dir(), '.codex', 'auth.json']);
-const DEFAULT_API_URL = 'https://chatgpt.com/backend-api/wham/usage';
+const FETCH_SCRIPT = 'fetch_codex_status.py';
 const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
+const CACHE_DIR = GLib.build_filenamev([GLib.get_user_state_dir(), 'codex-usage']);
+const CACHE_PATH = GLib.build_filenamev([CACHE_DIR, 'last-usage.json']);
 const PANEL_SIDE_BY_SETTING = {
     left: 'left',
     right: 'right',
@@ -26,7 +27,6 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
         this._extension = extension;
         this._settings = settings;
-        this._session = this._createSession();
         this._lastUpdatedAt = null;
         this._lastPayload = null;
 
@@ -68,6 +68,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._createMenu();
         this._updateDisplayMode();
         this._updateIconVisibility();
+        this._loadCachedPayload();
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'refresh-interval') {
@@ -76,8 +77,6 @@ class CodexUsageIndicator extends PanelMenu.Button {
                 this._updateDisplayMode();
             } else if (key === 'show-icon') {
                 this._updateIconVisibility();
-            } else if (key === 'proxy-url') {
-                this._recreateSession();
             } else if ((key === 'time-format' || key === 'date-format' || key === 'usage-metric' || key === 'show-code-review') && this._lastPayload) {
                 this._updateDisplay(this._lastPayload);
             }
@@ -209,23 +208,6 @@ class CodexUsageIndicator extends PanelMenu.Button {
         };
     }
 
-    _createSession() {
-        const session = new Soup.Session();
-        const proxyUrl = this._settings.get_string('proxy-url').trim();
-        if (proxyUrl !== '') {
-            const resolver = Gio.SimpleProxyResolver.new(proxyUrl, null);
-            session.set_proxy_resolver(resolver);
-        }
-        return session;
-    }
-
-    _recreateSession() {
-        if (this._session) {
-            this._session.abort();
-        }
-        this._session = this._createSession();
-    }
-
     _bindProgressBar(progressBg, progressBar, mode) {
         progressBar._codexFillMode = mode;
         progressBar._codexPercent = null;
@@ -299,7 +281,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                     return;
                 }
 
-                this._fetchUsage(accessToken, accountId);
+                this._fetchUsage(authPath);
             } catch (error) {
                 console.error(`Codex Usage: failed to read auth file: ${error.message}`);
                 this._setErrorState(`Could not read ${authPath}`);
@@ -307,39 +289,86 @@ class CodexUsageIndicator extends PanelMenu.Button {
         });
     }
 
-    _fetchUsage(accessToken, accountId) {
-        const message = Soup.Message.new('GET', DEFAULT_API_URL);
-        message.request_headers.append('Authorization', `Bearer ${accessToken}`);
-        message.request_headers.append('ChatGPT-Account-Id', accountId);
-        message.request_headers.append('Accept', 'application/json');
-        message.request_headers.append('User-Agent', 'gnome-shell-codex-usage/1.0');
+    _fetchUsage(authPath) {
+        const scriptPath = GLib.build_filenamev([this._extension.path, FETCH_SCRIPT]);
+        const argv = [
+            'python3',
+            scriptPath,
+            '--raw',
+            '--auth-file',
+            authPath,
+            '--timeout',
+            '30',
+        ];
+        const proxyUrl = this._settings.get_string('proxy-url').trim();
+        if (proxyUrl !== '') {
+            argv.push('--proxy-url', proxyUrl);
+        }
 
-        this._session.send_and_read_async(
-            message,
-            GLib.PRIORITY_DEFAULT,
-            null,
-            (session, result) => {
-                try {
-                    const bytes = session.send_and_read_finish(result);
-
-                    if (message.status_code !== 200) {
-                        this._setErrorState(`HTTP ${message.status_code}`);
-                        return;
-                    }
-
-                    const payload = JSON.parse(new TextDecoder().decode(bytes.get_data()));
-                    this._updateDisplay(payload);
-                } catch (error) {
-                    console.error(`Codex Usage: failed to fetch usage: ${error.message}`);
-                    this._setErrorState('Usage request failed');
-                }
-            }
+        const subprocess = Gio.Subprocess.new(
+            argv,
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
         );
+
+        subprocess.communicate_utf8_async(null, null, (_proc, result) => {
+            try {
+                const [, stdout, stderr] = subprocess.communicate_utf8_finish(result);
+                if (!subprocess.get_successful()) {
+                    const message = stderr?.trim() || 'Usage request failed';
+                    console.error(`Codex Usage: failed to fetch usage: ${message}`);
+                    this._setErrorState(message);
+                    return;
+                }
+
+                const payload = JSON.parse(stdout);
+                this._updateDisplay(payload);
+                this._storeCachedPayload(payload);
+            } catch (error) {
+                console.error(`Codex Usage: failed to fetch usage: ${error.message}`);
+                this._setErrorState('Usage request failed');
+            }
+        });
+    }
+
+    _loadCachedPayload() {
+        try {
+            const file = Gio.File.new_for_path(CACHE_PATH);
+            const [success, contents] = file.load_contents(null);
+            if (!success) {
+                return;
+            }
+
+            const payload = JSON.parse(new TextDecoder().decode(contents));
+            this._updateDisplay(payload);
+            this._updatedLabel.set_text('Showing cached result');
+        } catch (_error) {
+        }
+    }
+
+    _storeCachedPayload(payload) {
+        try {
+            GLib.mkdir_with_parents(CACHE_DIR, 0o755);
+            const file = Gio.File.new_for_path(CACHE_PATH);
+            file.replace_contents(
+                JSON.stringify(payload),
+                null,
+                false,
+                Gio.FileCreateFlags.REPLACE_DESTINATION,
+                null
+            );
+        } catch (error) {
+            console.error(`Codex Usage: failed to store cache: ${error.message}`);
+        }
     }
 
     _setErrorState(message) {
+        if (this._lastPayload) {
+            this._updatedLabel.set_text(`Refresh failed (${message}), showing last result`);
+            return;
+        }
+
         this._label.set_text('Error');
-        this._panelProgressBar.set_width(0);
+        this._updatePanelProgressBar(null);
         this._creditsLabel.set_text(`Credits: ${message}`);
         this._primaryValueLabel.set_text('—');
         this._primaryResetLabel.set_text('—');
@@ -612,10 +641,6 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     destroy() {
         this._stopTimer();
-        if (this._session) {
-            this._session.abort();
-            this._session = null;
-        }
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
