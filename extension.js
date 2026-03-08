@@ -29,6 +29,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._settings = settings;
         this._lastUpdatedAt = null;
         this._lastPayload = null;
+        this._refreshInFlight = false;
 
         this._box = new St.BoxLayout({
             style_class: 'panel-status-menu-box',
@@ -137,6 +138,12 @@ class CodexUsageIndicator extends PanelMenu.Button {
         footerBox.add_child(this._updatedLabel);
         footerItem.add_child(footerBox);
         this.menu.addMenuItem(footerItem);
+
+        this._refreshNowItem = new PopupMenu.PopupMenuItem('Update Now');
+        this._refreshNowItem.connect('activate', () => {
+            this._refreshUsage(true);
+        });
+        this.menu.addMenuItem(this._refreshNowItem);
 
         const usageItem = new PopupMenu.PopupMenuItem('Open Usage Page');
         usageItem.connect('activate', () => {
@@ -264,7 +271,13 @@ class CodexUsageIndicator extends PanelMenu.Button {
         }
     }
 
-    _refreshUsage() {
+    _refreshUsage(manual = false) {
+        if (this._refreshInFlight) {
+            return;
+        }
+
+        this._refreshInFlight = true;
+        this._setRefreshActionState(true, manual);
         const authPath = this._resolveAuthPath();
         const file = Gio.File.new_for_path(authPath);
 
@@ -278,6 +291,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
                 if (!accessToken || !accountId) {
                     this._setErrorState('Missing Codex token or account ID');
+                    this._finishRefresh();
                     return;
                 }
 
@@ -285,6 +299,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             } catch (error) {
                 console.error(`Codex Usage: failed to read auth file: ${error.message}`);
                 this._setErrorState(`Could not read ${authPath}`);
+                this._finishRefresh();
             }
         });
     }
@@ -317,6 +332,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                     const message = stderr?.trim() || 'Usage request failed';
                     console.error(`Codex Usage: failed to fetch usage: ${message}`);
                     this._setErrorState(message);
+                    this._finishRefresh();
                     return;
                 }
 
@@ -326,8 +342,26 @@ class CodexUsageIndicator extends PanelMenu.Button {
             } catch (error) {
                 console.error(`Codex Usage: failed to fetch usage: ${error.message}`);
                 this._setErrorState('Usage request failed');
+            } finally {
+                this._finishRefresh();
             }
         });
+    }
+
+    _finishRefresh() {
+        this._refreshInFlight = false;
+        this._setRefreshActionState(false);
+    }
+
+    _setRefreshActionState(inFlight) {
+        if (!this._refreshNowItem) {
+            return;
+        }
+
+        this._refreshNowItem.label.text = inFlight
+            ? 'Updating...'
+            : 'Update Now';
+        this._refreshNowItem.setSensitive(!inFlight);
     }
 
     _loadCachedPayload() {
