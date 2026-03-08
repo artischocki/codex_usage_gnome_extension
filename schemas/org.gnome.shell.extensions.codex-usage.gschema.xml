@@ -12,7 +12,7 @@
       <description>Show usage in the panel as text, a progress bar, or both.</description>
     </key>
     <key name="usage-metric" type="s">
-      <default>'used'</default>
+      <default>'left'</default>
       <summary>Usage metric</summary>
       <description>Show usage percentages as used or remaining.</description>
     </key>
