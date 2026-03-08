@@ -74,6 +74,20 @@ export default class CodexUsagePreferences extends ExtensionPreferences {
         });
         panelGroup.add(displayModeRow);
 
+        const usageMetricRow = new Adw.ComboRow({
+            title: 'Usage metric',
+            subtitle: 'Show percentages as used or left.',
+        });
+        const usageMetricModel = new Gtk.StringList();
+        usageMetricModel.append('Used');
+        usageMetricModel.append('Left');
+        usageMetricRow.set_model(usageMetricModel);
+        usageMetricRow.set_selected(settings.get_string('usage-metric') === 'left' ? 1 : 0);
+        usageMetricRow.connect('notify::selected', () => {
+            settings.set_string('usage-metric', usageMetricRow.get_selected() === 1 ? 'left' : 'used');
+        });
+        panelGroup.add(usageMetricRow);
+
         const showIconRow = new Adw.SwitchRow({
             title: 'Show icon',
             subtitle: 'Display a terminal icon next to the usage indicator.',

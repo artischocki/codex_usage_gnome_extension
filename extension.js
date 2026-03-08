@@ -71,7 +71,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                 this._updateIconVisibility();
             } else if (key === 'proxy-url') {
                 this._recreateSession();
-            } else if ((key === 'time-format' || key === 'date-format') && this._lastPayload) {
+            } else if ((key === 'time-format' || key === 'date-format' || key === 'usage-metric') && this._lastPayload) {
                 this._updateDisplay(this._lastPayload);
             }
 
@@ -340,10 +340,10 @@ class CodexUsageIndicator extends PanelMenu.Button {
         const codeReview = payload.code_review_rate_limit ?? null;
         const credits = payload.credits ?? null;
 
-        const primaryPercent = this._windowPercent(primary);
-        const secondaryPercent = this._windowPercent(secondary);
+        const primaryPercent = this._displayPercent(primary);
+        const secondaryPercent = this._displayPercent(secondary);
 
-        this._label.set_text(`${Math.round(primaryPercent)}%`);
+        this._label.set_text(this._formatPanelPercent(primaryPercent));
         this._updatePanelProgressBar(primaryPercent);
         this._creditsLabel.set_text(this._formatCredits(credits, rateLimit.allowed === false));
 
@@ -357,7 +357,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
         const reviewWindow = codeReview?.primary_window ?? null;
         if (reviewWindow) {
-            const reviewPercent = this._windowPercent(reviewWindow);
+            const reviewPercent = this._displayPercent(reviewWindow);
             this._reviewValueLabel.set_text(this._formatPercent(reviewPercent));
             this._reviewResetLabel.set_text(this._formatLongWindowMeta(reviewWindow));
             this._updateProgressBar(this._reviewProgressBar, reviewPercent);
@@ -377,13 +377,34 @@ class CodexUsageIndicator extends PanelMenu.Button {
     _windowPercent(window) {
         const value = window?.used_percent;
         if (typeof value !== 'number' || !Number.isFinite(value)) {
-            return 0;
+            return null;
         }
         return Math.max(0, Math.min(100, value));
     }
 
+    _displayPercent(window) {
+        const usedPercent = this._windowPercent(window);
+        if (usedPercent === null) {
+            return null;
+        }
+        if (this._settings.get_string('usage-metric') === 'left') {
+            return Math.max(0, Math.min(100, 100 - usedPercent));
+        }
+        return usedPercent;
+    }
+
     _formatPercent(value) {
+        if (value === null) {
+            return '—';
+        }
         return `${value.toFixed(1)}%`;
+    }
+
+    _formatPanelPercent(value) {
+        if (value === null) {
+            return '—';
+        }
+        return `${Math.round(value)}%`;
     }
 
     _formatCredits(credits, limitReached) {
@@ -521,12 +542,25 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
     _updatePanelProgressBar(percent) {
         const maxWidth = 52;
+        if (percent === null) {
+            this._panelProgressBar.set_width(0);
+            return;
+        }
         const width = Math.round((percent / 100) * maxWidth);
         this._panelProgressBar.set_width(width);
     }
 
     _updateProgressBar(progressBar, percent) {
         const maxWidth = 220;
+        if (percent === null) {
+            progressBar.set_width(0);
+            progressBar.remove_style_class_name('usage-low');
+            progressBar.remove_style_class_name('usage-medium');
+            progressBar.remove_style_class_name('usage-high');
+            progressBar.remove_style_class_name('usage-critical');
+            progressBar.add_style_class_name('usage-low');
+            return;
+        }
         const width = Math.round((percent / 100) * maxWidth);
         progressBar.set_width(width);
 
@@ -535,11 +569,15 @@ class CodexUsageIndicator extends PanelMenu.Button {
         progressBar.remove_style_class_name('usage-high');
         progressBar.remove_style_class_name('usage-critical');
 
-        if (percent >= 90) {
+        const severityPercent = this._settings.get_string('usage-metric') === 'left'
+            ? 100 - percent
+            : percent;
+
+        if (severityPercent >= 90) {
             progressBar.add_style_class_name('usage-critical');
-        } else if (percent >= 70) {
+        } else if (severityPercent >= 70) {
             progressBar.add_style_class_name('usage-high');
-        } else if (percent >= 40) {
+        } else if (severityPercent >= 40) {
             progressBar.add_style_class_name('usage-medium');
         } else {
             progressBar.add_style_class_name('usage-low');
