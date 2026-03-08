@@ -11,6 +11,11 @@
       <summary>Display mode</summary>
       <description>Show usage in the panel as text, a progress bar, or both.</description>
     </key>
+    <key name="usage-metric" type="s">
+      <default>'used'</default>
+      <summary>Usage metric</summary>
+      <description>Show usage percentages as used or remaining.</description>
+    </key>
     <key name="time-format" type="s">
       <default>'24h'</default>
       <summary>Time format</summary>
