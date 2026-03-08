@@ -546,7 +546,9 @@ class CodexUsageIndicator extends PanelMenu.Button {
             this._panelProgressBar.set_width(0);
             return;
         }
-        const width = Math.round((percent / 100) * maxWidth);
+        const width = percent >= 100
+            ? maxWidth + 1
+            : Math.round((percent / 100) * maxWidth);
         this._panelProgressBar.set_width(width);
     }
 
@@ -561,7 +563,9 @@ class CodexUsageIndicator extends PanelMenu.Button {
             progressBar.add_style_class_name('usage-low');
             return;
         }
-        const width = Math.round((percent / 100) * maxWidth);
+        const width = percent >= 100
+            ? maxWidth + 1
+            : Math.round((percent / 100) * maxWidth);
         progressBar.set_width(width);
 
         progressBar.remove_style_class_name('usage-low');
