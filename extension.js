@@ -14,6 +14,10 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 const DEFAULT_AUTH_PATH = GLib.build_filenamev([GLib.get_home_dir(), '.codex', 'auth.json']);
 const DEFAULT_API_URL = 'https://chatgpt.com/backend-api/wham/usage';
 const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
+const PANEL_SIDE_BY_SETTING = {
+    left: 'left',
+    right: 'right',
+};
 
 const CodexUsageIndicator = GObject.registerClass(
 class CodexUsageIndicator extends PanelMenu.Button {
@@ -624,12 +628,38 @@ export default class CodexUsageExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._indicator = new CodexUsageIndicator(this, this._settings);
-        Main.panel.addToStatusArea(this.uuid, this._indicator);
+        this._addIndicator();
+        this._panelSideChangedId = this._settings.connect('changed::panel-side', () => {
+            this._moveIndicator();
+        });
     }
 
     disable() {
+        if (this._panelSideChangedId) {
+            this._settings.disconnect(this._panelSideChangedId);
+            this._panelSideChangedId = null;
+        }
         this._indicator?.destroy();
         this._indicator = null;
         this._settings = null;
+    }
+
+    _addIndicator() {
+        Main.panel.addToStatusArea(
+            this.uuid,
+            this._indicator,
+            0,
+            PANEL_SIDE_BY_SETTING[this._settings.get_string('panel-side')] ?? 'right'
+        );
+    }
+
+    _moveIndicator() {
+        if (!this._indicator) {
+            return;
+        }
+
+        this._indicator.destroy();
+        this._indicator = new CodexUsageIndicator(this, this._settings);
+        this._addIndicator();
     }
 }
