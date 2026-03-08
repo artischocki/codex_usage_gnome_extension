@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 
 DEFAULT_AUTH_PATH = Path.home() / ".codex" / "auth.json"
@@ -38,6 +38,11 @@ def parse_args() -> argparse.Namespace:
         default=15.0,
         help="HTTP timeout in seconds (default: 15)",
     )
+    parser.add_argument(
+        "--proxy-url",
+        default="",
+        help="Optional proxy URL to use for HTTP(S) requests.",
+    )
     return parser.parse_args()
 
 
@@ -62,7 +67,13 @@ def load_auth(auth_path: Path) -> tuple[str, str]:
     return access_token, account_id
 
 
-def fetch_usage(url: str, access_token: str, account_id: str, timeout: float) -> dict:
+def fetch_usage(
+    url: str,
+    access_token: str,
+    account_id: str,
+    timeout: float,
+    proxy_url: str,
+) -> dict:
     request = Request(
         url,
         headers={
@@ -75,7 +86,9 @@ def fetch_usage(url: str, access_token: str, account_id: str, timeout: float) ->
     )
 
     try:
-        with urlopen(request, timeout=timeout) as response:
+        opener = build_opener(ProxyHandler({"http": proxy_url, "https": proxy_url})) if proxy_url else None
+        open_fn = opener.open if opener else urlopen
+        with open_fn(request, timeout=timeout) as response:
             body = response.read().decode("utf-8")
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
@@ -172,7 +185,13 @@ def main() -> None:
     args = parse_args()
     auth_path = Path(args.auth_file).expanduser()
     access_token, account_id = load_auth(auth_path)
-    payload = fetch_usage(args.url, access_token, account_id, args.timeout)
+    payload = fetch_usage(
+        args.url,
+        access_token,
+        account_id,
+        args.timeout,
+        args.proxy_url,
+    )
 
     if args.raw:
         json.dump(payload, sys.stdout, indent=2)
