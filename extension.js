@@ -15,6 +15,7 @@ const FETCH_SCRIPT = 'fetch_codex_status.py';
 const USAGE_PAGE_URL = 'https://chatgpt.com/codex/settings/usage';
 const CACHE_DIR = GLib.build_filenamev([GLib.get_user_state_dir(), 'codex-usage']);
 const CACHE_PATH = GLib.build_filenamev([CACHE_DIR, 'last-usage.json']);
+const MANUAL_REFRESH_COOLDOWN_MS = 5000;
 const PANEL_SIDE_BY_SETTING = {
     left: 'left',
     right: 'right',
@@ -29,6 +30,9 @@ class CodexUsageIndicator extends PanelMenu.Button {
         this._settings = settings;
         this._lastUpdatedAt = null;
         this._lastPayload = null;
+        this._refreshInFlight = false;
+        this._manualRefreshCooldownUntil = 0;
+        this._manualRefreshCooldownId = null;
 
         this._box = new St.BoxLayout({
             style_class: 'panel-status-menu-box',
@@ -137,6 +141,28 @@ class CodexUsageIndicator extends PanelMenu.Button {
         footerBox.add_child(this._updatedLabel);
         footerItem.add_child(footerBox);
         this.menu.addMenuItem(footerItem);
+
+        const refreshNowItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+        });
+        this._refreshNowButtonLabel = new St.Label({
+            text: 'Update Now',
+            style_class: 'codex-usage-action-label',
+            x_expand: true,
+            x_align: Clutter.ActorAlign.START,
+        });
+        this._refreshNowButton = new St.Button({
+            child: this._refreshNowButtonLabel,
+            can_focus: true,
+            x_expand: true,
+            style_class: 'popup-menu-item',
+        });
+        this._refreshNowButton.connect('clicked', () => {
+            this._refreshUsage(true);
+        });
+        refreshNowItem.add_child(this._refreshNowButton);
+        this.menu.addMenuItem(refreshNowItem);
 
         const usageItem = new PopupMenu.PopupMenuItem('Open Usage Page');
         usageItem.connect('activate', () => {
@@ -264,7 +290,17 @@ class CodexUsageIndicator extends PanelMenu.Button {
         }
     }
 
-    _refreshUsage() {
+    _refreshUsage(manual = false) {
+        if (this._refreshInFlight || (manual && !this._canRunManualRefresh())) {
+            return;
+        }
+
+        if (manual) {
+            this._startManualRefreshCooldown();
+        }
+
+        this._refreshInFlight = true;
+        this._setRefreshActionState();
         const authPath = this._resolveAuthPath();
         const file = Gio.File.new_for_path(authPath);
 
@@ -278,6 +314,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
 
                 if (!accessToken || !accountId) {
                     this._setErrorState('Missing Codex token or account ID');
+                    this._finishRefresh();
                     return;
                 }
 
@@ -285,6 +322,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
             } catch (error) {
                 console.error(`Codex Usage: failed to read auth file: ${error.message}`);
                 this._setErrorState(`Could not read ${authPath}`);
+                this._finishRefresh();
             }
         });
     }
@@ -317,6 +355,7 @@ class CodexUsageIndicator extends PanelMenu.Button {
                     const message = stderr?.trim() || 'Usage request failed';
                     console.error(`Codex Usage: failed to fetch usage: ${message}`);
                     this._setErrorState(message);
+                    this._finishRefresh();
                     return;
                 }
 
@@ -326,8 +365,52 @@ class CodexUsageIndicator extends PanelMenu.Button {
             } catch (error) {
                 console.error(`Codex Usage: failed to fetch usage: ${error.message}`);
                 this._setErrorState('Usage request failed');
+            } finally {
+                this._finishRefresh();
             }
         });
+    }
+
+    _finishRefresh() {
+        this._refreshInFlight = false;
+        this._setRefreshActionState();
+    }
+
+    _canRunManualRefresh() {
+        return Date.now() >= this._manualRefreshCooldownUntil;
+    }
+
+    _startManualRefreshCooldown() {
+        this._manualRefreshCooldownUntil = Date.now() + MANUAL_REFRESH_COOLDOWN_MS;
+
+        if (this._manualRefreshCooldownId) {
+            GLib.source_remove(this._manualRefreshCooldownId);
+        }
+
+        this._manualRefreshCooldownId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            MANUAL_REFRESH_COOLDOWN_MS,
+            () => {
+                this._manualRefreshCooldownId = null;
+                this._setRefreshActionState();
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
+    _setRefreshActionState() {
+        if (!this._refreshNowButton || !this._refreshNowButtonLabel) {
+            return;
+        }
+
+        const inCooldown = !this._canRunManualRefresh();
+        this._refreshNowButtonLabel.text = this._refreshInFlight
+            ? 'Updating...'
+            : inCooldown
+                ? 'Update Now (5s)'
+                : 'Update Now';
+        this._refreshNowButton.set_reactive(!this._refreshInFlight && !inCooldown);
+        this._refreshNowButton.can_focus = !this._refreshInFlight && !inCooldown;
     }
 
     _loadCachedPayload() {
@@ -644,6 +727,10 @@ class CodexUsageIndicator extends PanelMenu.Button {
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
+        }
+        if (this._manualRefreshCooldownId) {
+            GLib.source_remove(this._manualRefreshCooldownId);
+            this._manualRefreshCooldownId = null;
         }
         super.destroy();
     }
